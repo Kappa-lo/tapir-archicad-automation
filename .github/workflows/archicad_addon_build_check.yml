@@ -48,35 +48,7 @@ jobs:
       id: list
       run: |
         echo "win=$(python3 tools/devkits.py matrix WIN)" >> "$GITHUB_OUTPUT"
-        echo "mac=$(python3 tools/devkits.py matrix MAC)" >> "$GITHUB_OUTPUT"
-
-  build_win:
-    needs: devkits
-    strategy:
-      fail-fast: false
-      matrix:
-        params: ${{ fromJSON(needs.devkits.outputs.win) }}
-    runs-on: [ windows-2022 ]
-    steps:
-    - name: Checkout Repo
-      uses: actions/checkout@v4
-    - name: Download Development Kit
-      run: python archicad-addon/Tools/download_and_unzip.py ${{ matrix.params.devKitUrl }} archicad-addon/Build/DevKits/AC${{ matrix.params.acVersion }}
-    - name: Generate Project <AC29
-      if: matrix.params.acVersion < 29
-      run: cmake -B archicad-addon/Build -G "Visual Studio 17 2022" -A "x64" -T "v142" -DAC_VERSION=${{ matrix.params.acVersion }} -DAC_API_DEVKIT_DIR="archicad-addon/Build/DevKits/AC${{ matrix.params.acVersion }}/Support" archicad-addon
-    - name: Generate Project >=AC29
-      if: matrix.params.acVersion >= 29
-      run: cmake -B archicad-addon/Build -G "Visual Studio 17 2022" -A "x64" -T "v143" -DAC_VERSION=${{ matrix.params.acVersion }} -DAC_API_DEVKIT_DIR="archicad-addon/Build/DevKits/AC${{ matrix.params.acVersion }}/Support" archicad-addon
-    - name: Build Debug
-      run: cmake --build archicad-addon/Build --config Debug
-    - name: Build RelWithDebInfo
-      run: cmake --build archicad-addon/Build --config RelWithDebInfo
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: Tapir Add-On AC${{ matrix.params.acVersion }} Win
-        path: archicad-addon/Build/RelWithDebInfo/TapirAddOn_AC${{ matrix.params.acVersion }}_Win.apx
+        echo "mac=$(python3 tools/devkits.py matrix MAC | python3 -c 'import json, sys; print (json.dumps ([p for p in json.load (sys.stdin) if p["acVersion"] == 29]))')" >> "$GITHUB_OUTPUT"
 
   build_mac:
     needs: devkits
@@ -84,7 +56,7 @@ jobs:
       fail-fast: false
       matrix:
         params: ${{ fromJSON(needs.devkits.outputs.mac) }}
-    runs-on: ${{ matrix.params.acVersion < 26 && 'macos-15-intel' || 'macos-latest' }}
+    runs-on: macos-15-intel
     steps:
     - name: Checkout repo
       uses: actions/checkout@v4
